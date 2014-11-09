@@ -7,45 +7,44 @@ using System.IO;
 
 namespace win.auto
 {
+    /// <summary>
+    /// * The standard .NET Imaging class's GetPixel() is too slow.
+    /// * Description
+    /// * Matching
+    /// </summary>
     public class FastAccessImage
     {
-        public byte[] Bytes;
-        public int Stride;
+        public string Description;
+        public PixelFormat PixelFormat;
+        public ColorPalette ColorPalette;
         public int Width;
         public int Height;
+        public int Stride;
+        public byte[] Bytes;
 
         public FastAccessImage(string bitmapPath)
             : this(new Bitmap(bitmapPath))
         {
+            this.Description = bitmapPath;
         }
 
         public FastAccessImage(Bitmap bmp)
         {
-            if (bmp.PixelFormat != PixelFormat.Format32bppArgb)
-            {
-                throw new NotImplementedException("Only Format32bppArgb supported");
-            }
+            this.PixelFormat = bmp.PixelFormat;
+            this.ColorPalette = bmp.Palette;
+            this.Width = bmp.Width;
+            this.Height = bmp.Height;
+            
+            BitmapData bmpData = bmp.LockBits(
+                new Rectangle(0, 0, bmp.Width, bmp.Height), 
+                ImageLockMode.ReadOnly, 
+                bmp.PixelFormat
+            );
 
-            Width = bmp.Width;
-            Height = bmp.Height;
+            this.Stride = bmpData.Stride;
+            this.Bytes = new byte[bmpData.Stride * bmp.Height];
+            System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, this.Bytes, 0, this.Bytes.Length);
 
-            // Lock the bitmap's bits.  
-            Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-            BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.ReadOnly, bmp.PixelFormat);
-
-            // Get the address of the first line.
-            IntPtr ptr = bmpData.Scan0;
-
-            // Declare an array to hold the bytes of the bitmap.
-            int numberOfBytes = bmpData.Stride * bmp.Height;
-            Stride = bmpData.Stride;
-            byte[] rgbValues = new byte[numberOfBytes];
-
-            // Copy the RGB values into the array.
-            System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, numberOfBytes);
-            Bytes = rgbValues;
-
-            // Unlock the bits.
             bmp.UnlockBits(bmpData);
         }
 
@@ -56,20 +55,24 @@ namespace win.auto
                 throw new ArgumentException("Rectangle not within the image");
             }
 
-            Width = subSection.Width;
-            Height = subSection.Height;
-            Stride = subSection.Width * 4;
-            Bytes = new byte[subSection.Width * subSection.Height * 4];
+            this.PixelFormat = other.PixelFormat;
+            var bpp = Image.GetPixelFormatSize(this.PixelFormat) / 8;
+            this.ColorPalette = other.ColorPalette;
+            this.Width = subSection.Width;
+            this.Height = subSection.Height;
+            this.Stride = subSection.Width * bpp;
+            this.Bytes = new byte[this.Stride * this.Height];
+
             for (int y = 0; y < Height; y++)
             {
                 for (int x = 0; x < Width; x++)
                 {
-                    Color pixel = other.GetPixel(subSection.X + x, subSection.Y + y);
-                    int baseIndex = y * Stride + x * 4;
-                    Bytes[baseIndex + 3] = pixel.A;
-                    Bytes[baseIndex + 2] = pixel.R;
-                    Bytes[baseIndex + 1] = pixel.G;
-                    Bytes[baseIndex + 0] = pixel.B;
+                    var thisBaseIndex = y * Stride + x * bpp;
+                    var otherBaseIndex = ((subSection.Y + y) * other.Stride + (subSection.X + x) * bpp);
+                    for (int i = 0; i < bpp; i++)
+                    {
+                        this.Bytes[thisBaseIndex + i] = other.Bytes[otherBaseIndex + i];
+                    }
                 }
             }
         }
@@ -83,15 +86,42 @@ namespace win.auto
         {
             if (x < 0 || y < 0 || x > Width || y > Height)
             {
-                throw new ArgumentException(String.Format("GetPixel({0},{1}) on an image of size [{2},{3}]", x, y, Width, Height));
+                throw new ArgumentException(String.Format(
+                    "GetPixel({0},{1}) on an image of size [{2},{3}]", 
+                    x, y, Width, Height
+                ));
             }
-            int baseIndex = y * Stride + x * 4;
-            return Color.FromArgb(
-                Bytes[baseIndex + 3],   // Alpha
-                Bytes[baseIndex + 2],   // Red
-                Bytes[baseIndex + 1],   // Green
-                Bytes[baseIndex]        // Blue
-            );
+
+            var baseIndex = y * Stride + x * Image.GetPixelFormatSize(this.PixelFormat) / 8;
+
+            switch(this.PixelFormat)
+            {
+                case PixelFormat.Format32bppArgb:
+                    return Color.FromArgb(
+                        Bytes[baseIndex + 3],   // Alpha
+                        Bytes[baseIndex + 2],   // Red
+                        Bytes[baseIndex + 1],   // Green
+                        Bytes[baseIndex]        // Blue
+                    );
+                case PixelFormat.Format24bppRgb:
+                    return Color.FromArgb(
+                        Bytes[baseIndex + 2],   // Red
+                        Bytes[baseIndex + 1],   // Green
+                        Bytes[baseIndex]        // Blue
+                    );
+                case PixelFormat.Format8bppIndexed:
+                    return this.ColorPalette.Entries[Bytes[baseIndex]];
+                default:
+                    throw new InvalidOperationException(String.Format(
+                        "{0} is not a supported pixel format.",
+                        this.PixelFormat
+                    ));
+            }
+        }
+
+        public FastAccessImage Subsection(Rectangle r)
+        {
+            return new FastAccessImage(this, r);
         }
 
         private bool MatchPixelUnsafe(FastAccessImage image, int x, int y)
