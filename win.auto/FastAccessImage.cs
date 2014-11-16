@@ -4,19 +4,15 @@ using System.Runtime.Serialization;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 
 namespace win.auto
 {
-    /// <summary>
-    /// * The standard .NET Imaging class's GetPixel() is too slow.
-    /// * Description
-    /// * Matching
-    /// </summary>
     public class FastAccessImage
     {
         public string Description;
         public PixelFormat PixelFormat;
-        public ColorPalette ColorPalette;
+        public List<Pixel> PixelPalette;
         public int Width;
         public int Height;
         public int Stride;
@@ -31,7 +27,7 @@ namespace win.auto
         public FastAccessImage(Bitmap bmp)
         {
             this.PixelFormat = bmp.PixelFormat;
-            this.ColorPalette = bmp.Palette;
+            this.PixelPalette = bmp.Palette.Entries.ToList().ConvertAll(color => new Pixel(color));
             this.Width = bmp.Width;
             this.Height = bmp.Height;
             
@@ -57,7 +53,7 @@ namespace win.auto
 
             this.PixelFormat = other.PixelFormat;
             var bpp = Image.GetPixelFormatSize(this.PixelFormat) / 8;
-            this.ColorPalette = other.ColorPalette;
+            this.PixelPalette = other.PixelPalette;
             this.Width = subSection.Width;
             this.Height = subSection.Height;
             this.Stride = subSection.Width * bpp;
@@ -77,12 +73,12 @@ namespace win.auto
             }
         }
 
-        public Color GetPixel(Point p)
+        public Pixel GetPixel(Point p)
         {
             return GetPixel(p.X, p.Y);
         }
 
-        public Color GetPixel(int x, int y)
+        public Pixel GetPixel(int x, int y)
         {
             if (x < 0 || y < 0 || x > Width || y > Height)
             {
@@ -97,20 +93,20 @@ namespace win.auto
             switch(this.PixelFormat)
             {
                 case PixelFormat.Format32bppArgb:
-                    return Color.FromArgb(
-                        Bytes[baseIndex + 3],   // Alpha
-                        Bytes[baseIndex + 2],   // Red
-                        Bytes[baseIndex + 1],   // Green
-                        Bytes[baseIndex]        // Blue
+                    return new Pixel(
+                        r: Bytes[baseIndex + 2],
+                        g: Bytes[baseIndex + 1],
+                        b: Bytes[baseIndex],
+                        a: Bytes[baseIndex + 3]
                     );
                 case PixelFormat.Format24bppRgb:
-                    return Color.FromArgb(
-                        Bytes[baseIndex + 2],   // Red
-                        Bytes[baseIndex + 1],   // Green
-                        Bytes[baseIndex]        // Blue
+                    return new Pixel(
+                        r: Bytes[baseIndex + 2],
+                        g: Bytes[baseIndex + 1],
+                        b: Bytes[baseIndex]
                     );
                 case PixelFormat.Format8bppIndexed:
-                    return this.ColorPalette.Entries[Bytes[baseIndex]];
+                    return this.PixelPalette[Bytes[baseIndex]];
                 default:
                     throw new InvalidOperationException(String.Format(
                         "{0} is not a supported pixel format.",
