@@ -155,6 +155,11 @@ namespace win.auto
 
         public class GlyphLookup
         {
+            public FastAccessImage ReferenceImage { get; private set; }
+            public Dictionary<string, Rectangle> ReferenceLookup { get; private set; }
+            public Pixel ReferencePixel { get; private set; }
+            public int WhiteSpaceWidth { get; private set; }
+
             public GlyphLookup(string imagePath, IList<string> glyphList, int whiteSpaceWidth)
             {
                 this.ReferenceImage = new FastAccessImage(imagePath);
@@ -205,14 +210,6 @@ namespace win.auto
                     this.ReferenceLookup.Add(glyphList[i], rectangles[i]);
                 }
             }
-
-            public FastAccessImage ReferenceImage { get; private set; }
-
-            public Dictionary<string, Rectangle> ReferenceLookup { get; private set; }
-
-            public Pixel ReferencePixel { get; private set; }
-
-            public int WhiteSpaceWidth { get; private set; }
         }
     }
 }

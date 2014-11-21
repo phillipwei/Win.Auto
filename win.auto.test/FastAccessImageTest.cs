@@ -3,19 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Drawing;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using win.auto;
-using NUnit.Framework;
 
 namespace win.auto.test
 {
-    [TestFixture]
+    [TestClass]
     public class PixelImageTest
     {
         List<FastAccessImage> rgbList;
         FastAccessImage font, helloWorld;
 
-        [TestFixtureSetUp]
-        public void SetUp()
+        [TestInitialize]
+        public void Initialize()
         {
             var dataPath = @"Data";
             var rgbFileNames = new List<String>() {"rgb.bmp", "rgb.gif", "rgb32.png", "rgb24.png", "rgb8.png"};
@@ -24,7 +24,7 @@ namespace win.auto.test
             this.helloWorld = new FastAccessImage(Path.Combine(dataPath, "helloworld.png"));
         }
 
-        [Test]
+        [TestMethod]
         public void Image_GetPixel_Test()
         {
             Dictionary<Point, Pixel> expectedColorsByCoord = new Dictionary<Point, Pixel>()
@@ -78,16 +78,14 @@ namespace win.auto.test
             }
         }
 
-        [Test]
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
         public void Image_GetPixel_OutOfRange_Test()
         {
-            foreach(var image in rgbList)
-            {
-                Assert.Throws<ArgumentException>(() => image.GetPixel(-1, -1));
-            }
+            rgbList.First().GetPixel(-1, -1);
         }
 
-        [Test]
+        [TestMethod]
         public void Image_Subsection_Test()
         {
         }
