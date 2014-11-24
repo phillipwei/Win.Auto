@@ -8,7 +8,14 @@ namespace win.auto
 {
     public class ImageParser
     {
-        public static List<string> Read(FastAccessImage image, GlyphLookup lookup, List<Rectangle> locations)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="image">Image to parse</param>
+        /// <param name="lookup">The GlyphMapping</param>
+        /// <param name="locations">The locations to parse -- has to exactly match the height of the Glyphs</param>
+        /// <returns></returns>
+        public static List<string> Read(FastAccessImage image, GlyphMapping lookup, List<Rectangle> locations)
         {
             List<string> results = new List<string>();
             foreach (Rectangle location in locations)
@@ -19,7 +26,7 @@ namespace win.auto
             return results;
         }
 
-        public static string Read(FastAccessImage image, GlyphLookup lookup, Rectangle location)
+        public static string Read(FastAccessImage image, GlyphMapping lookup, Rectangle location)
         {
             if (location.X > image.Width ||
                 location.Right > image.Width ||
@@ -29,7 +36,7 @@ namespace win.auto
                 throw new IndexOutOfRangeException("Rectangle outside of supplied image");
             }
 
-            int x = HorizontalSeek(image, lookup, location, 0);
+            int x = image.HorizontalSeek(lookup.ReferencePixel, location, 0);
             if (x == -1)
             {
                 return string.Empty;
@@ -48,54 +55,14 @@ namespace win.auto
             return parsedString.ToString().Trim();
         }
 
-        public static int HorizontalSeek(FastAccessImage image, GlyphLookup lookup, Rectangle rectangle, int xStart)
-        {
-            if (xStart >= rectangle.Width)
-            {
-                return -1;
-            }
-
-            int left = rectangle.Left;
-            int top = rectangle.Top;
-            int width = rectangle.Width;
-            int height = rectangle.Height;
-
-            int y = 0;
-            for (; xStart < width; xStart++)
-            {
-                for (y = 0; y < height; y++)
-                {
-                    Pixel pixel = image.GetPixel(left + xStart, top + y);
-                    if (pixel.Equals(lookup.ReferencePixel))
-                    {
-                        break;
-                    }
-                }
-
-                if (y != height)
-                {
-                    break;
-                }
-            }
-
-            if ((xStart == width) && (y == height))
-            {
-                return -1;
-            }
-            else
-            {
-                return xStart;
-            }
-        }
-
-        public static GlyphParseResult ParseNextGlyph(FastAccessImage image, GlyphLookup lookup, Rectangle rectangle, int xStart)
+        public static GlyphParseResult ParseNextGlyph(FastAccessImage image, GlyphMapping lookup, Rectangle rectangle, int xStart)
         {
             foreach (var kvp in lookup.ReferenceLookup.OrderBy(key => -1 * key.Value.Width))
             {
                 if (CheckGlyphMatch(image, lookup, rectangle, xStart, lookup.ReferenceImage, kvp.Value))
                 {
                     int xEndOfCurrent = xStart + kvp.Value.Width;
-                    int xStartOfNext = HorizontalSeek(image, lookup, rectangle, xEndOfCurrent);
+                    int xStartOfNext = image.HorizontalSeek(lookup.ReferencePixel, rectangle, xEndOfCurrent);
                     if (xStartOfNext == -1)
                     {
                         return new GlyphParseResult(false, kvp.Key, -1);
@@ -114,7 +81,7 @@ namespace win.auto
             return new GlyphParseResult(false, string.Empty, -1);
         }
 
-        public static bool CheckGlyphMatch(FastAccessImage image, GlyphLookup lookup, Rectangle location, int xStart, FastAccessImage glyphImageReference, Rectangle glyphRectangle)
+        public static bool CheckGlyphMatch(FastAccessImage image, GlyphMapping lookup, Rectangle location, int xStart, FastAccessImage glyphImageReference, Rectangle glyphRectangle)
         {
             if (xStart + glyphRectangle.Width > location.Right || glyphRectangle.Height > location.Height)
             {
@@ -150,65 +117,6 @@ namespace win.auto
                 this.Continue = parsingComplete;
                 this.ParsedString = parsedString;
                 this.X = x;
-            }
-        }
-
-        public class GlyphLookup
-        {
-            public FastAccessImage ReferenceImage { get; private set; }
-            public Dictionary<string, Rectangle> ReferenceLookup { get; private set; }
-            public Pixel ReferencePixel { get; private set; }
-            public int WhiteSpaceWidth { get; private set; }
-
-            public GlyphLookup(string imagePath, IList<string> glyphList, int whiteSpaceWidth)
-            {
-                this.ReferenceImage = new FastAccessImage(imagePath);
-                this.WhiteSpaceWidth = whiteSpaceWidth;
-                IList<Rectangle> rectangles = new List<Rectangle>();
-                bool seekingStart = true;
-                int startingX = 0;
-                for (int x = 0; x < this.ReferenceImage.Width; x++)
-                {
-                    int y = 0;
-                    for (; y < this.ReferenceImage.Height; y++)
-                    {
-                        Pixel pixel = this.ReferenceImage.GetPixel(x, y);
-                        byte alpha = pixel.Alpha;
-
-                        if (alpha != 0)
-                        {
-                            if (seekingStart)
-                            {
-                                startingX = x;
-                                this.ReferencePixel = pixel;
-                                seekingStart = !seekingStart;
-                                break;
-                            }
-                            else
-                            {
-                                break;
-                            }
-                        }
-                    }
-
-                    if ((y == this.ReferenceImage.Height && !seekingStart) ||
-                        (x == this.ReferenceImage.Width - 1))
-                    {
-                        rectangles.Add(new Rectangle(startingX, 0, x - startingX, this.ReferenceImage.Height));
-                        seekingStart = !seekingStart;
-                    }
-                }
-
-                if (glyphList.Count != rectangles.Count)
-                {
-                    throw new ArgumentException("Glyphs don't match");
-                }
-
-                this.ReferenceLookup = new Dictionary<string, Rectangle>();
-                for (int i = 0; i < glyphList.Count; i++)
-                {
-                    this.ReferenceLookup.Add(glyphList[i], rectangles[i]);
-                }
             }
         }
     }

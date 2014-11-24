@@ -12,14 +12,14 @@ namespace win.auto.test
     [TestClass]
     public class ImageParserTest
     {
-        ImageParser.GlyphLookup font;
+        GlyphMapping font;
         FastAccessImage helloWorld;
 
         [TestInitialize]
         public void Initialize()
         {
             var dataPath = @"Data";
-            this.font = new ImageParser.GlyphLookup(
+            this.font = new GlyphMapping(
                 Path.Combine(dataPath, "04b03.png"),
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".Select(c => c.ToString()).ToList(),
                 2

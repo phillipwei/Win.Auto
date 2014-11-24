@@ -44,6 +44,8 @@ namespace win.auto
             bmp.UnlockBits(bmpData);
         }
 
+        // note: we force to argb -- the principle being that we probably always want to use argb, though, until we
+        // do a write operation we won't force it.
         public FastAccessImage(FastAccessImage other, Rectangle subSection)
         {
             if (!Geometry.RectangleContainsRectangle(new Rectangle(Point.Empty, other.GetSize()), subSection))
@@ -51,24 +53,28 @@ namespace win.auto
                 throw new ArgumentException("Rectangle not within the image");
             }
 
+            /*
             this.PixelFormat = other.PixelFormat;
             var bpp = Image.GetPixelFormatSize(this.PixelFormat) / 8;
             this.PixelPalette = other.PixelPalette;
+             */
+
+            this.PixelFormat = PixelFormat.Format32bppArgb;
             this.Width = subSection.Width;
             this.Height = subSection.Height;
-            this.Stride = subSection.Width * bpp;
+            var bpp = Image.GetPixelFormatSize(this.PixelFormat) / 8;
+            this.Stride = this.Width * bpp;
             this.Bytes = new byte[this.Stride * this.Height];
 
-            for (int y = 0; y < Height; y++)
+            var thisStep = Image.GetPixelFormatSize(this.PixelFormat) / 8;
+            var otherStep = Image.GetPixelFormatSize(other.PixelFormat) / 8;
+
+            for (int y = 0; y < this.Height; y++)
             {
-                for (int x = 0; x < Width; x++)
+                for (int x = 0; x < this.Width; x++)
                 {
-                    var thisBaseIndex = y * Stride + x * bpp;
-                    var otherBaseIndex = ((subSection.Y + y) * other.Stride + (subSection.X + x) * bpp);
-                    for (int i = 0; i < bpp; i++)
-                    {
-                        this.Bytes[thisBaseIndex + i] = other.Bytes[otherBaseIndex + i];
-                    }
+                    var pixel = other.GetPixelUnsafe(subSection.X + x, subSection.Y + y, otherStep);
+                    this.SetPixelUnsafe(x, y, thisStep, pixel);
                 }
             }
         }
@@ -88,9 +94,14 @@ namespace win.auto
                 ));
             }
 
-            var baseIndex = y * Stride + x * Image.GetPixelFormatSize(this.PixelFormat) / 8;
+            return GetPixelUnsafe(x, y, Image.GetPixelFormatSize(this.PixelFormat) / 8);
+        }
 
-            switch(this.PixelFormat)
+        private Pixel GetPixelUnsafe(int x, int y, int step)
+        {
+            var baseIndex = y * Stride + x * step;
+
+            switch (this.PixelFormat)
             {
                 case PixelFormat.Format32bppArgb:
                     return new Pixel(
@@ -115,9 +126,104 @@ namespace win.auto
             }
         }
 
+        private void SetPixelUnsafe(int x, int y, int step, Pixel pixel)
+        {
+            var baseIndex = y * Stride + x * step;
+
+            switch (this.PixelFormat)
+            {
+                case PixelFormat.Format32bppArgb:
+                    Bytes[baseIndex + 0] = pixel.Blue;
+                    Bytes[baseIndex + 1] = pixel.Green;
+                    Bytes[baseIndex + 2] = pixel.Red;
+                    Bytes[baseIndex + 3] = pixel.Alpha;
+                    break;
+                case PixelFormat.Format24bppRgb:
+                    Bytes[baseIndex + 0] = pixel.Blue;
+                    Bytes[baseIndex + 1] = pixel.Green;
+                    Bytes[baseIndex + 2] = pixel.Red;
+                    break;
+                default:
+                    throw new InvalidOperationException(String.Format(
+                        "{0} is not a supported pixel format.",
+                        this.PixelFormat
+                    ));
+            }
+        }
+
         public FastAccessImage Subsection(Rectangle r)
         {
             return new FastAccessImage(this, r);
+        }
+
+        public override string ToString()
+        {
+            return Description;
+        }
+        
+        // todo: does it make sense for this to be on the image itself - or does it go onto an algo/vision class?
+        //       what abt the fact that it's mostly used for imageparsing?
+        // Searches horizontally, scanning up-down, until it finds the search pixel.  Returns the x-position if it
+        // was found -- otherwise, returns -1.  
+        public int HorizontalSeek(Pixel searchPixel, Rectangle rectangle, int xOffset)
+        {
+            if (xOffset >= rectangle.Width)
+            {
+                return -1;
+            }
+
+            int y = 0;
+            for (; xOffset < rectangle.Width; xOffset++)
+            {
+                for (y = 0; y < rectangle.Height; y++)
+                {
+                    var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
+                    if (sample.Equals(searchPixel))
+                    {
+                        break;
+                    }
+                }
+
+                if (y != rectangle.Height)
+                {
+                    break;
+                }
+            }
+
+            if ((xOffset == rectangle.Width) && (y == rectangle.Height))
+            {
+                return -1;
+            }
+            else
+            {
+                return xOffset;
+            }
+        }
+
+        // the opposite of the above -- could rename and def refactor...
+        public bool VerticalScan(Pixel searchPixel, Rectangle rectangle, int xOffset, out int yStart, out int yEnd)
+        {
+            yStart = yEnd = -1;
+
+            if (xOffset >= rectangle.Width)
+            {
+                return false;
+            }
+
+            for (int y = 0; y < rectangle.Height; y++)
+            {
+                var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
+                if (sample.Equals(searchPixel))
+                {
+                    if(yStart == -1)
+                    {
+                        yStart = y;
+                    }
+                    yEnd = y;
+                }
+            }
+
+            return yStart != -1;
         }
 
         private bool MatchPixelUnsafe(FastAccessImage image, int x, int y)
@@ -204,6 +310,29 @@ namespace win.auto
             return true;
         }
 
+        public bool Matches(FastAccessImage other)
+        {
+            if( other == null ||
+                (this.Width != other.Width) ||
+                (this.Height != other.Height))
+            {
+                return false;
+            }
+
+            for (int x = 0; x < Width; x++ )
+            {
+                for (int y=0;y<Height; y++)
+                {
+                    if (!this.GetPixel(x,y).Equals(other.GetPixel(x,y)))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
         public List<Point> DifferentPixels(FastAccessImage image)
         {
             if (Width != image.Width || Height != image.Height)
@@ -226,14 +355,32 @@ namespace win.auto
             return returnValue;
         }
 
+        // todo: is this a reasonable name?
         public Bitmap GetBitmap()
         {
-            Bitmap bmp = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
-            Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-            BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.WriteOnly, bmp.PixelFormat);
-            IntPtr ptr = bmpData.Scan0;
-            int numberOfBytes = bmpData.Stride * bmp.Height;
-            System.Runtime.InteropServices.Marshal.Copy(Bytes, 0, ptr, numberOfBytes);
+            // note: after subsections, the fai strides may not be the properly padded stride of a real bmp -- so
+            // we can't just do a direct memory copy.  use 32 to keep things easy.
+            var bmp = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
+            var bmpStep = Image.GetPixelFormatSize(PixelFormat.Format32bppArgb) / 8;
+            var bmpData = bmp.LockBits(GetRectangle(), ImageLockMode.WriteOnly, bmp.PixelFormat);
+            var bmpPtr = bmpData.Scan0;
+
+            // create a byte array that is sized right; we will memcopy this once it's filled
+            var bmpBytes = new Byte[Math.Abs(bmpData.Stride) * bmp.Height];
+            for (int x = 0; x < Width; x++)
+            {
+                for (int y = 0; y < Height; y++)
+                {
+                    var pixel = GetPixel(x, y);
+                    var baseIndex = y * bmpData.Stride + x * bmpStep;
+                    bmpBytes[baseIndex + 0] = pixel.Blue;
+                    bmpBytes[baseIndex + 1] = pixel.Green;
+                    bmpBytes[baseIndex + 2] = pixel.Red;
+                    bmpBytes[baseIndex + 3] = pixel.Alpha;
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(bmpBytes, 0, bmpPtr, bmpBytes.Length);
             bmp.UnlockBits(bmpData);
             return bmp;
         }
@@ -287,9 +434,12 @@ namespace win.auto
         public void Save(string path)
         {
             using (Bitmap bmp = GetBitmap())
+            {
                 bmp.Save(path);
+            }
         }
 
+        // note: i don't think this quite works -- stride differences?
         public override bool Equals(object obj)
         {
             FastAccessImage other = obj as FastAccessImage;
@@ -303,6 +453,21 @@ namespace win.auto
         public override int GetHashCode()
         {
             return Width * 29 + Height * 29 + Stride;
+        }
+
+        public void Cutout(Pixel pixel)
+        {
+            var step = Image.GetPixelFormatSize(this.PixelFormat) / 8;
+            for (int x = 0; x < Width; ++x)
+            {
+                for (int y = 0; y < Height; ++y)
+                {
+                    if(!GetPixel(x,y).Equals(pixel))
+                    {
+                        this.SetPixelUnsafe(x, y, step, Pixel.Empty);
+                    }
+                }
+            }
         }
     }
 }

@@ -5,6 +5,9 @@ namespace win.auto
 {
     public struct Pixel
     {
+        public static Pixel Black = new Pixel(0, 0, 0);
+        public static Pixel White = new Pixel(255, 255, 255);
+        public static Pixel Empty = new Pixel(0, 0, 0, 0);
         public byte Red, Green, Blue, Alpha;
 
         public Pixel(Color c)

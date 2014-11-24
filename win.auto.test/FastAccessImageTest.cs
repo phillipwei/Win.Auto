@@ -88,6 +88,19 @@ namespace win.auto.test
         [TestMethod]
         public void Image_Subsection_Test()
         {
+            var sub = rgbList.First().Subsection(new Rectangle(1, 1, 1, 1));
+            Assert.AreEqual(1, sub.Width);
+            Assert.AreEqual(1, sub.Height);
+            Assert.AreEqual(new Pixel(255, 0, 255), sub.GetPixel(0, 0));
+        }
+
+        [TestMethod]       
+        public void Image_GetBitMap_Test()
+        {
+            foreach(var rgb in rgbList)
+            {
+                new FastAccessImage(rgb.GetBitmap());
+            }
         }
     }
 }
