@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace win.auto
 {
@@ -62,12 +63,11 @@ namespace win.auto
             this.PixelFormat = PixelFormat.Format32bppArgb;
             this.Width = subSection.Width;
             this.Height = subSection.Height;
-            var bpp = Image.GetPixelFormatSize(this.PixelFormat) / 8;
-            this.Stride = this.Width * bpp;
+            var thisStep = this.GetStep();
+            this.Stride = this.Width * thisStep;
             this.Bytes = new byte[this.Stride * this.Height];
 
-            var thisStep = Image.GetPixelFormatSize(this.PixelFormat) / 8;
-            var otherStep = Image.GetPixelFormatSize(other.PixelFormat) / 8;
+            var otherStep = other.GetStep();
 
             for (int y = 0; y < this.Height; y++)
             {
@@ -77,6 +77,11 @@ namespace win.auto
                     this.SetPixelUnsafe(x, y, thisStep, pixel);
                 }
             }
+        }
+
+        public int GetStep()
+        {
+            return Image.GetPixelFormatSize(this.PixelFormat) / 8;
         }
 
         public Pixel GetPixel(Point p)
@@ -319,11 +324,11 @@ namespace win.auto
                 return false;
             }
 
-            for (int x = 0; x < Width; x++ )
+            for (int x = 0; x < Width; x++)
             {
-                for (int y=0;y<Height; y++)
+                for (int y = 0; y < Height; y++)
                 {
-                    if (!this.GetPixel(x,y).Equals(other.GetPixel(x,y)))
+                    if (!this.GetPixel(x, y).Equals(other.GetPixel(x, y)))
                     {
                         return false;
                     }
@@ -455,6 +460,7 @@ namespace win.auto
             return Width * 29 + Height * 29 + Stride;
         }
 
+        // return new?
         public void Cutout(Pixel pixel)
         {
             var step = Image.GetPixelFormatSize(this.PixelFormat) / 8;
@@ -468,6 +474,21 @@ namespace win.auto
                     }
                 }
             }
+        }
+
+        public string ToAsciiArt()
+        {
+            var sb = new StringBuilder();
+            var step = this.GetStep();
+            for(int y=0; y<this.Height; y++)
+            {
+                for(int x=0; x<this.Width; x++)
+                {
+                    sb.Append(this.GetPixelUnsafe(x, y, step).Alpha == 0 ? " " : "#");
+                }
+                sb.AppendLine();
+            }
+            return sb.ToString();
         }
     }
 }

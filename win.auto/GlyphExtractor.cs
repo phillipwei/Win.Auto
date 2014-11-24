@@ -6,30 +6,34 @@ using System.Linq;
 
 namespace win.auto
 {
+    /// <summary>
+    /// Helps extract Glyphs from loosely specified regions of interest.
+    /// </summary>
     public class GlyphExtractor
     {
-        List<FastAccessImage> images;
-        List<Rectangle> rois;
-        Pixel glyphColor;
+        List<FastAccessImage> Images;
+        List<Rectangle> RegionsOfInterest;
+        Pixel GlyphColor;
 
-        List<Rectangle> capturedBounds;
-        List<FastAccessImage> glyphs;
+        public List<FastAccessImage> Glyphs;
+        public List<Rectangle> TextAreaBounds;
 
-        public GlyphExtractor(IEnumerable<FastAccessImage> images, IEnumerable<Rectangle> rois, Pixel glyphColor)
+        public GlyphExtractor(IEnumerable<FastAccessImage> images, IEnumerable<Rectangle> regionsOfInterest, Pixel glyphColor)
         {
-            this.images = new List<FastAccessImage>(images);
-            this.rois = new List<Rectangle>(rois);
-            this.glyphColor = glyphColor;
+            this.Images = new List<FastAccessImage>(images);
+            this.RegionsOfInterest = new List<Rectangle>(regionsOfInterest);
+            this.GlyphColor = glyphColor;
         }
 
-        public List<ExtractedGlyph> Extract()
+        // finds glyphs, finds textareas
+        public void ExtractGlyphs()
         {
-            var extractedGlyphs = new List<ExtractedGlyph>();
+            var extractedGlyphs = new List<GlyphExtraction>();
 
             // find glyph bounds
-            foreach (var image in images)
+            foreach (var image in Images)
             {
-                foreach (var roi in rois)
+                foreach (var roi in RegionsOfInterest)
                 {
                     var extracting = false;
                     int glyphLeft = 0, glyphTop = 0, glyphBottom = 0;
@@ -37,7 +41,7 @@ namespace win.auto
                     for (int x = 0; x < roi.Width; x++)
                     {
                         int yStart, yEnd;
-                        var found = image.VerticalScan(this.glyphColor, roi, x, out yStart, out yEnd);
+                        var found = image.VerticalScan(this.GlyphColor, roi, x, out yStart, out yEnd);
 
                         if (!extracting && found)
                         {
@@ -59,36 +63,78 @@ namespace win.auto
                                                        x - glyphLeft,
                                                        glyphBottom - glyphTop + 1);
                             bounds.Offset(roi.Location);
-                            extractedGlyphs.Add(new ExtractedGlyph(image, roi, bounds));
+                            extractedGlyphs.Add(new GlyphExtraction(image, roi, bounds));
                         }
                     }
                 }
             }
 
-            // find font bounds
+            // find font and textarea bounds
             var glyphsByRoi = extractedGlyphs.GroupBy(g => g.RegionOfInterest).ToDictionary(g => g.Key, g => g.ToList());
+            this.TextAreaBounds = new List<Rectangle>();
 
             foreach (var kvp in glyphsByRoi)
             {
                 var top = kvp.Value.Min(g => g.GlyphBounds.Top);
                 var bottom = kvp.Value.Max(g => g.GlyphBounds.Bottom);
+                var left = kvp.Value.Min(g => g.GlyphBounds.Left);
+                var right = kvp.Value.Max(g => g.GlyphBounds.Right);
+                var textAreaBounds = new Rectangle(left, top, right - left + 1, bottom - top + 1);
+                this.TextAreaBounds.Add(textAreaBounds);
                 foreach (var g in kvp.Value)
                 {
                     g.FontBounds = new Rectangle(g.GlyphBounds.X, top, g.GlyphBounds.Width, bottom - top + 1);
+                    g.TextAreaBounds = textAreaBounds;
                 }
             }
 
-            return extractedGlyphs;
+            var uniqueGlyphs = new List<FastAccessImage>();
+
+            foreach (var extractedGlyph in extractedGlyphs)
+            {
+                var glyph = extractedGlyph.Image.Subsection(extractedGlyph.FontBounds);
+                glyph.Cutout(Pixel.White);
+                if (!uniqueGlyphs.Exists(g => g.Matches(glyph)))
+                {
+                    uniqueGlyphs.Add(glyph);
+                }
+            }
+
+            this.Glyphs = uniqueGlyphs;
         }
 
-        public class ExtractedGlyph
+        /// <summary>
+        /// Internal data structure to keep track of work as the Glyph is being extracted.
+        /// </summary>
+        public class GlyphExtraction
         {
+            /// <summary>
+            /// The Image the Glyph was found in.
+            /// </summary>
             public FastAccessImage Image;
+
+            /// <summary>
+            /// The RegionOfInterest the Glyph was found in.
+            /// </summary>
             public Rectangle RegionOfInterest;
+
+            /// <summary>
+            /// The minimum area that encapsulates this Glyph.  Not if the Glyph is short, this might not cover the
+            /// entirely line height.
+            /// </summary>
             public Rectangle GlyphBounds;
+
+            /// <summary>
+            /// The area that would properly encapsulate this Glyph as part of a font set.
+            /// </summary>
             public Rectangle FontBounds;
 
-            public ExtractedGlyph(FastAccessImage image, Rectangle roi, Rectangle bounds)
+            /// <summary>
+            /// The area that is actually occupied by Text in this RegionOfInterest
+            /// </summary>
+            public Rectangle TextAreaBounds;
+
+            public GlyphExtraction(FastAccessImage image, Rectangle roi, Rectangle bounds)
             {
                 this.Image = image;
                 this.RegionOfInterest = roi;
