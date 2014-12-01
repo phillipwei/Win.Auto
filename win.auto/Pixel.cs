@@ -55,7 +55,7 @@ namespace win.auto
                 this.Alpha == other.Alpha;
         }
 
-        public bool CloselyMatches(Pixel other, int channelThreshold)
+        public bool CloseTo(Pixel other, int channelThreshold)
         {
             return Math.Abs(this.Red - other.Red) < channelThreshold &&
                 Math.Abs(this.Green - other.Green) < channelThreshold &&

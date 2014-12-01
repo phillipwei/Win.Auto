@@ -13,7 +13,7 @@ namespace win.auto.test
     public class ImageParserTest
     {
         GlyphMapping font;
-        FastAccessImage helloWorld;
+        PixelImage helloWorld;
 
         [TestInitialize]
         public void Initialize()
@@ -24,13 +24,13 @@ namespace win.auto.test
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".Select(c => c.ToString()).ToList(),
                 2
             );
-            this.helloWorld = new FastAccessImage(Path.Combine(dataPath, "helloworld.png"));
+            this.helloWorld = new PixelImage(Path.Combine(dataPath, "helloworld.png"));
         }
 
         [TestMethod]
         public void ImageParser_HelloWorld_Test()
         {
-            var result = ImageParser.Read(helloWorld, font, helloWorld.GetRectangle());
+            var result = ImageParsing.Read(helloWorld, font, helloWorld.GetRectangle());
             Assert.AreEqual("Hello World", result);
         }
     }

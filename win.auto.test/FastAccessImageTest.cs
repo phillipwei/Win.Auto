@@ -11,17 +11,17 @@ namespace win.auto.test
     [TestClass]
     public class PixelImageTest
     {
-        List<FastAccessImage> rgbList;
-        FastAccessImage font, helloWorld;
+        List<PixelImage> rgbList;
+        PixelImage font, helloWorld;
 
         [TestInitialize]
         public void Initialize()
         {
             var dataPath = @"Data";
             var rgbFileNames = new List<String>() {"rgb.bmp", "rgb.gif", "rgb32.png", "rgb24.png", "rgb8.png"};
-            this.rgbList = rgbFileNames.ConvertAll(s => new FastAccessImage(Path.Combine(dataPath, s)));
-            this.font = new FastAccessImage(Path.Combine(dataPath, "04b03.png"));
-            this.helloWorld = new FastAccessImage(Path.Combine(dataPath, "helloworld.png"));
+            this.rgbList = rgbFileNames.ConvertAll(s => new PixelImage(Path.Combine(dataPath, s)));
+            this.font = new PixelImage(Path.Combine(dataPath, "04b03.png"));
+            this.helloWorld = new PixelImage(Path.Combine(dataPath, "helloworld.png"));
         }
 
         [TestMethod]
@@ -99,7 +99,7 @@ namespace win.auto.test
         {
             foreach(var rgb in rgbList)
             {
-                new FastAccessImage(rgb.GetBitmap());
+                new PixelImage(rgb.GetBitmap());
             }
         }
     }

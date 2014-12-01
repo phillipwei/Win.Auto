@@ -11,16 +11,16 @@ namespace win.auto
     /// </summary>
     public class GlyphExtractor
     {
-        List<FastAccessImage> Images;
+        List<PixelImage> Images;
         List<Rectangle> RegionsOfInterest;
         Pixel GlyphColor;
 
-        public List<FastAccessImage> Glyphs;
+        public List<PixelImage> Glyphs;
         public List<Rectangle> TextAreaBounds;
 
-        public GlyphExtractor(IEnumerable<FastAccessImage> images, IEnumerable<Rectangle> regionsOfInterest, Pixel glyphColor)
+        public GlyphExtractor(IEnumerable<PixelImage> images, IEnumerable<Rectangle> regionsOfInterest, Pixel glyphColor)
         {
-            this.Images = new List<FastAccessImage>(images);
+            this.Images = new List<PixelImage>(images);
             this.RegionsOfInterest = new List<Rectangle>(regionsOfInterest);
             this.GlyphColor = glyphColor;
         }
@@ -88,12 +88,13 @@ namespace win.auto
                 }
             }
 
-            var uniqueGlyphs = new List<FastAccessImage>();
+            var uniqueGlyphs = new List<PixelImage>();
 
             foreach (var extractedGlyph in extractedGlyphs)
             {
                 var glyph = extractedGlyph.Image.Subsection(extractedGlyph.FontBounds);
-                glyph.Cutout(Pixel.White);
+                glyph.Mask(Pixel.White);
+                glyph.Replace(Pixel.White, Pixel.Black);
                 if (!uniqueGlyphs.Exists(g => g.Matches(glyph)))
                 {
                     uniqueGlyphs.Add(glyph);
@@ -111,7 +112,7 @@ namespace win.auto
             /// <summary>
             /// The Image the Glyph was found in.
             /// </summary>
-            public FastAccessImage Image;
+            public PixelImage Image;
 
             /// <summary>
             /// The RegionOfInterest the Glyph was found in.
@@ -134,7 +135,7 @@ namespace win.auto
             /// </summary>
             public Rectangle TextAreaBounds;
 
-            public GlyphExtraction(FastAccessImage image, Rectangle roi, Rectangle bounds)
+            public GlyphExtraction(PixelImage image, Rectangle roi, Rectangle bounds)
             {
                 this.Image = image;
                 this.RegionOfInterest = roi;
