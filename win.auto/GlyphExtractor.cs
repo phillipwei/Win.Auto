@@ -13,20 +13,21 @@ namespace win.auto
     {
         List<PixelImage> Images;
         List<Rectangle> RegionsOfInterest;
-        Pixel GlyphColor;
+        Func<Pixel,bool> GlyphPixelMatcher;
 
         public List<PixelImage> Glyphs;
         public List<Rectangle> TextAreaBounds;
 
-        public GlyphExtractor(IEnumerable<PixelImage> images, IEnumerable<Rectangle> regionsOfInterest, Pixel glyphColor)
+        public GlyphExtractor(IEnumerable<PixelImage> images, IEnumerable<Rectangle> regionsOfInterest, 
+            Func<Pixel, bool> glyphMatcher)
         {
             this.Images = new List<PixelImage>(images);
             this.RegionsOfInterest = new List<Rectangle>(regionsOfInterest);
-            this.GlyphColor = glyphColor;
+            this.GlyphPixelMatcher = glyphMatcher;
         }
 
         // finds glyphs, finds textareas
-        public void ExtractGlyphs()
+        public void ExtractGlyphs(bool interactive=false)
         {
             var extractedGlyphs = new List<GlyphExtraction>();
 
@@ -41,8 +42,9 @@ namespace win.auto
                     for (int x = 0; x < roi.Width; x++)
                     {
                         int yStart, yEnd;
-                        var found = image.VerticalScan(this.GlyphColor, roi, x, out yStart, out yEnd);
+                        var found = image.VerticalScan(this.GlyphPixelMatcher, roi, x, out yStart, out yEnd);
 
+                        // beginning of new glyph
                         if (!extracting && found)
                         {
                             extracting = true;
@@ -50,11 +52,13 @@ namespace win.auto
                             glyphTop = yStart;
                             glyphBottom = yEnd;
                         }
+                        // continuing new glyph
                         else if (extracting && found)
                         {
                             glyphTop = Math.Min(glyphTop, yStart);
                             glyphBottom = Math.Max(glyphBottom, yEnd);
                         }
+                        // glyph end
                         else if (extracting && (!found || x == roi.Width - 1))
                         {
                             extracting = false;
@@ -63,7 +67,21 @@ namespace win.auto
                                                        x - glyphLeft,
                                                        glyphBottom - glyphTop + 1);
                             bounds.Offset(roi.Location);
-                            extractedGlyphs.Add(new GlyphExtraction(image, roi, bounds));
+
+                            var glyphExtraction = new GlyphExtraction(image, roi, bounds);
+                            if(interactive)
+                            {
+                                var glyph = image.Subsection(bounds);
+                                glyph.Mask(GlyphPixelMatcher);
+                                Console.WriteLine(glyph.ToAsciiArt());
+                                if(Console.ReadKey().Key == ConsoleKey.N)
+                                {
+                                    Console.WriteLine("Skipping");
+                                    continue;
+                                }
+                                Console.WriteLine("Adding");
+                            }
+                            extractedGlyphs.Add(glyphExtraction);
                         }
                     }
                 }
@@ -93,8 +111,8 @@ namespace win.auto
             foreach (var extractedGlyph in extractedGlyphs)
             {
                 var glyph = extractedGlyph.Image.Subsection(extractedGlyph.FontBounds);
-                glyph.Mask(Pixel.White);
-                glyph.Replace(Pixel.White, Pixel.Black);
+                glyph.Mask(GlyphPixelMatcher);
+                glyph.Replace(GlyphPixelMatcher, Pixel.Black);
                 if (!uniqueGlyphs.Exists(g => g.Matches(glyph)))
                 {
                     uniqueGlyphs.Add(glyph);

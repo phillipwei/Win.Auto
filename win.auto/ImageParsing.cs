@@ -29,10 +29,11 @@ namespace win.auto
 
         public static string Read(PixelImage image, GlyphMapping lookup, Rectangle location)
         {
-            return Read(image, lookup, location, lookup.ReferencePixel);
+            return Read(image, lookup, location, p => p.Equals(lookup.ReferencePixel));
         }
-
-        public static string Read(PixelImage image, GlyphMapping lookup, Rectangle location, Pixel pixel)
+        
+        public static string Read(PixelImage image, GlyphMapping lookup, Rectangle location, 
+            Func<Pixel,bool> pixelMatcher)
         {
             if (location.X > image.Width ||
                 location.Right > image.Width ||
@@ -42,7 +43,7 @@ namespace win.auto
                 throw new IndexOutOfRangeException("Rectangle outside of supplied image");
             }
 
-            int x = image.HorizontalSeek(pixel, location, 0);
+            int x = image.HorizontalSeek(pixelMatcher, location, 0);
             if (x == -1)
             {
                 return string.Empty;
@@ -52,7 +53,7 @@ namespace win.auto
             GlyphParseResult parseResult = new GlyphParseResult(true, string.Empty, x);
             do
             {
-                parseResult = ParseNextGlyph(image, lookup, location, pixel, x);
+                parseResult = ParseNextGlyph(image, lookup, location, pixelMatcher, x);
                 x = parseResult.X;
                 parsedString.Append(parseResult.ParsedString);
             }
@@ -61,15 +62,15 @@ namespace win.auto
             return parsedString.ToString().Trim();
         }
 
-        public static GlyphParseResult ParseNextGlyph(PixelImage image, GlyphMapping lookup, Rectangle rectangle, 
-            Pixel pixel, int xStart)
+        public static GlyphParseResult ParseNextGlyph(PixelImage image, GlyphMapping lookup, Rectangle rectangle,
+            Func<Pixel, bool> pixelMatcher, int xStart)
         {
             foreach (var kvp in lookup.ReferenceLookup.OrderBy(key => -1 * key.Value.Width))
             {
-                if (CheckGlyphMatch(image, lookup, rectangle, pixel, xStart, lookup.ReferenceImage, kvp.Value))
+                if (CheckGlyphMatch(image, lookup, rectangle, pixelMatcher, xStart, lookup.ReferenceImage, kvp.Value))
                 {
                     int xEndOfCurrent = xStart + kvp.Value.Width;
-                    int xStartOfNext = image.HorizontalSeek(pixel, rectangle, xEndOfCurrent);
+                    int xStartOfNext = image.HorizontalSeek(pixelMatcher, rectangle, xEndOfCurrent);
                     if (xStartOfNext == -1)
                     {
                         return new GlyphParseResult(false, kvp.Key, -1);
@@ -88,8 +89,8 @@ namespace win.auto
             return new GlyphParseResult(false, string.Empty, -1);
         }
 
-        public static bool CheckGlyphMatch(PixelImage image, GlyphMapping lookup, Rectangle location, Pixel pixel, 
-            int xStart, PixelImage glyphImageReference, Rectangle glyphRectangle)
+        public static bool CheckGlyphMatch(PixelImage image, GlyphMapping lookup, Rectangle location, 
+            Func<Pixel, bool> pixelMatcher, int xStart, PixelImage glyphImageReference, Rectangle glyphRectangle)
         {
             if (xStart + glyphRectangle.Width > location.Right || glyphRectangle.Height > location.Height)
             {
@@ -103,8 +104,8 @@ namespace win.auto
                     Pixel glyphPixel = glyphImageReference.GetPixel(glyphRectangle.Left + x, glyphRectangle.Top + y);
                     Pixel imagePixel = image.GetPixel(location.Left + xStart + x, location.Top + y);
 
-                    if ((glyphPixel.Alpha != 0 && !imagePixel.Equals(pixel)) ||
-                        (glyphPixel.Alpha == 0 && imagePixel.Equals(pixel)))
+                    if ((glyphPixel.Alpha != 0 && !pixelMatcher(imagePixel)) ||
+                        (glyphPixel.Alpha == 0 && pixelMatcher(imagePixel)))
                     {
                         return false;
                     }

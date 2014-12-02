@@ -189,7 +189,7 @@ namespace win.auto
         //       what abt the fact that it's mostly used for imageparsing?
         // Searches horizontally, scanning up-down, until it finds the search pixel.  Returns the x-position if it
         // was found -- otherwise, returns -1.  
-        public int HorizontalSeek(Pixel searchPixel, Rectangle rectangle, int xOffset)
+        public int HorizontalSeek(Func<Pixel, bool> pixelMatcher, Rectangle rectangle, int xOffset)
         {
             if (xOffset >= rectangle.Width)
             {
@@ -202,7 +202,7 @@ namespace win.auto
                 for (y = 0; y < rectangle.Height; y++)
                 {
                     var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
-                    if (sample.Equals(searchPixel))
+                    if (pixelMatcher(sample))
                     {
                         break;
                     }
@@ -225,7 +225,8 @@ namespace win.auto
         }
 
         // the opposite of the above -- could rename and def refactor...
-        public bool VerticalScan(Pixel searchPixel, Rectangle rectangle, int xOffset, out int yStart, out int yEnd)
+        public bool VerticalScan(Func<Pixel, bool> glyphMatcher, Rectangle rectangle, int xOffset, out int yStart, 
+            out int yEnd)
         {
             yStart = yEnd = -1;
 
@@ -237,7 +238,7 @@ namespace win.auto
             for (int y = 0; y < rectangle.Height; y++)
             {
                 var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
-                if (sample.Equals(searchPixel))
+                if (glyphMatcher(sample))
                 {
                     if(yStart == -1)
                     {
@@ -365,7 +366,7 @@ namespace win.auto
         }
 
         // return new?
-        public void Mask(Pixel pixel)
+        public void Mask(Func<Pixel,bool> pixelMatcher)
         {
             // todo: turn into map function
             var step = Image.GetPixelFormatSize(this.PixelFormat) / 8;
@@ -373,7 +374,7 @@ namespace win.auto
             {
                 for (int y = 0; y < Height; ++y)
                 {
-                    if(!GetPixel(x,y).Equals(pixel))
+                    if (!pixelMatcher(GetPixel(x, y)))
                     {
                         this.SetPixelUnsafe(x, y, step, Pixel.Empty);
                     }
@@ -381,9 +382,9 @@ namespace win.auto
             }
         }
 
-        public void Replace(Pixel pixelFrom, Pixel pixelTo)
+        public void Replace(Func<Pixel, bool> pixelMatcher, Pixel pixelTo)
         {
-            Map(p => p.Equals(pixelFrom) ? pixelTo : p);
+            Map(p => pixelMatcher(p) ? pixelTo : p);
         }
 
         private void Map(Func<Pixel,Pixel> mapping)

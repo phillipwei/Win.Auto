@@ -61,11 +61,18 @@ namespace win.auto
                     }
                 }
 
-                if ((y == this.ReferenceImage.Height && !seekingStart) ||
-                    (x == this.ReferenceImage.Width - 1))
+                // looking for end of character, empty vertical band => the characcter is up to (but not including)
+                // this band
+                if (!seekingStart && y == this.ReferenceImage.Height)
                 {
                     rectangles.Add(new Rectangle(startingX, 0, x - startingX, this.ReferenceImage.Height));
                     seekingStart = !seekingStart;
+                }
+                // looking for end of character, not the above (empty vertical band) but at end -- i.e. glyph list ends
+                // WITH character
+                else if (!seekingStart && x == this.ReferenceImage.Width - 1)
+                {
+                    rectangles.Add(new Rectangle(startingX, 0, x - startingX + 1, this.ReferenceImage.Height));
                 }
             }
 
