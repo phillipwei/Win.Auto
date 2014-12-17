@@ -366,6 +366,10 @@ namespace win.auto
         }
 
         // return new?
+        /// <summary>
+        /// Removes all Pixels that do not match
+        /// </summary>
+        /// <param name="pixelMatcher"></param>
         public void Mask(Func<Pixel,bool> pixelMatcher)
         {
             // todo: turn into map function
@@ -407,7 +411,7 @@ namespace win.auto
             {
                 for(int x=0; x<this.Width; x++)
                 {
-                    sb.Append(this.GetPixelUnsafe(x, y, step).Alpha == 0 ? " " : "#");
+                    sb.Append(this.GetPixelUnsafe(x, y, step).Alpha == 0 ? "-" : "#");
                 }
                 sb.AppendLine();
             }
