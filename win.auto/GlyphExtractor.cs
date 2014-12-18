@@ -94,7 +94,9 @@ namespace win.auto
                     chars.Add(val);
                 }
             }
+            Console.WriteLine(string.Join(" ", chars));
 
+            // todo: should tell you what the max difference was.
             Console.WriteLine("Character Spacing: ");
             var spacing = int.Parse(Console.ReadLine());
             var mapping = CombineGlyphsIntoMappingImage(acceptedGlyphs);
