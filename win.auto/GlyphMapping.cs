@@ -1,12 +1,18 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace win.auto
 {
+    /// <summary>
+    /// Data Structure that provides a mapping from Glyphs to Characters.  Used by ImageParsing to extract Character
+    /// information from PixelImages.
+    /// </summary>
     public class GlyphMapping
     {
         public PixelImage ReferenceImage { get; private set; }
@@ -24,15 +30,20 @@ namespace win.auto
         // todo: doesn't belong here
         public int WhiteSpaceWidth { get; private set; }
 
+        public GlyphMapping(string imagePath, IList<string> glyphList, int whiteSpaceWidth)
+            : this(new PixelImage(imagePath), glyphList, whiteSpaceWidth)
+        {
+        }
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="imagePath">Path to the Glyph image - has to have all glyphs on same row</param>
         /// <param name="glyphList">List of mappings</param>
         /// <param name="whiteSpaceWidth">The number of spaces</param>
-        public GlyphMapping(string imagePath, IList<string> glyphList, int whiteSpaceWidth)
+        public GlyphMapping(PixelImage referenceImage, IList<string> glyphList, int whiteSpaceWidth)
         {
-            this.ReferenceImage = new PixelImage(imagePath);
+            this.ReferenceImage = referenceImage;
             this.WhiteSpaceWidth = whiteSpaceWidth;
             IList<Rectangle> rectangles = new List<Rectangle>();
             bool seekingStart = true;
@@ -86,6 +97,34 @@ namespace win.auto
             {
                 this.ReferenceLookup.Add(glyphList[i], rectangles[i]);
             }
+        }
+
+        public void Save(string dir, string name)
+        {
+            var refPath = Path.Combine(dir, name + ".png");
+            this.ReferenceImage.Save(refPath);
+
+            var settings = new Settings()
+            {
+                Path = refPath,
+                Chars = this.ReferenceLookup.OrderBy(kvp => kvp.Value.Left).Select(kvp => kvp.Key).ToArray(), 
+                Spacing = this.WhiteSpaceWidth
+            };
+
+            File.WriteAllText(Path.Combine(dir, name + ".json"), JsonConvert.SerializeObject(settings));
+        }
+
+        public static GlyphMapping Load(string settingsPath)
+        {
+            var settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(Path.Combine(settingsPath)));
+            return new GlyphMapping(settings.Path, settings.Chars, settings.Spacing);
+        }
+
+        private class Settings
+        {
+            public string Path;
+            public string[] Chars;
+            public int Spacing;
         }
     }
 }

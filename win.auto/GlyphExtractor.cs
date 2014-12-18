@@ -7,33 +7,19 @@ using System.Linq;
 namespace win.auto
 {
     /// <summary>
-    /// Helps extract Glyphs from text-area bounds.  The text-area bounds must be well specified.
+    /// Helps extract unique Glyphs from a sequence of PixelImages, and then build a Glyph Mapping from those Glyphs.
     /// </summary>
     public class GlyphExtractor
     {
-        List<PixelImage> Images;
-        List<Rectangle> RegionsOfInterest;
-        Func<Pixel,bool> GlyphPixelMatcher;
-
-        public List<PixelImage> Glyphs;
-
-        public GlyphExtractor(IEnumerable<PixelImage> images, IEnumerable<Rectangle> textAreaBounds, 
-            Func<Pixel, bool> glyphMatcher)
-        {
-            this.Images = new List<PixelImage>(images);
-            this.RegionsOfInterest = new List<Rectangle>(textAreaBounds);
-            this.GlyphPixelMatcher = glyphMatcher;
-        }
-
-        // finds glyphs, finds textareas
-        public void ExtractGlyphs()
+        public List<PixelImage> ExtractUniqueGlyphs(IEnumerable<PixelImage> images, IEnumerable<Rectangle> textAreas,
+            Func<Pixel, bool> glyphPixelMatcher)
         {
             var extractedGlyphs = new List<GlyphExtraction>();
 
             // extract all glyphs that match the color
-            foreach (var image in Images)
+            foreach (var image in images)
             {
-                foreach (var roi in RegionsOfInterest)
+                foreach (var roi in textAreas)
                 {
                     var extracting = false;
                     int glyphLeft = 0, glyphTop = 0, glyphBottom = 0;
@@ -41,7 +27,7 @@ namespace win.auto
                     for (int x = 0; x < roi.Width; x++)
                     {
                         int yStart, yEnd;
-                        var found = image.VerticalScan(this.GlyphPixelMatcher, roi, x, out yStart, out yEnd);
+                        var found = image.VerticalScan(glyphPixelMatcher, roi, x, out yStart, out yEnd);
 
                         // beginning of new glyph
                         if (!extracting && found)
@@ -74,27 +60,71 @@ namespace win.auto
                 }
             }
 
+            // Winnow down to what is unique
             var uniqueGlyphs = new List<PixelImage>();
-
             foreach (var extractedGlyph in extractedGlyphs)
             {
                 var glyph = extractedGlyph.Image.Subsection(extractedGlyph.GlyphBounds);
-                glyph.Description = string.Format("{0} from {1}", extractedGlyph.GlyphBounds, extractedGlyph.Image.Description);
-                glyph.Mask(GlyphPixelMatcher);
-                glyph.Replace(GlyphPixelMatcher, Pixel.Black);
+                glyph.Description = string.Format("{0} from {1}", extractedGlyph.GlyphBounds,
+                    extractedGlyph.Image.Description);
+                glyph.Mask(glyphPixelMatcher);
+                glyph.Replace(glyphPixelMatcher, Pixel.Black);
                 if (!uniqueGlyphs.Exists(g => g.Matches(glyph)))
                 {
                     uniqueGlyphs.Add(glyph);
                 }
             }
 
-            this.Glyphs = uniqueGlyphs;
+            return uniqueGlyphs;
+        }
+
+        public GlyphMapping CreateGlyphMapping(IEnumerable<PixelImage> glyphs)
+        {
+            var acceptedGlyphs = new List<PixelImage>();
+            var chars = new List<string>();
+            foreach (var glyph in glyphs)
+            {
+                Console.WriteLine(glyph.Description);
+                Console.WriteLine(glyph.ToAsciiArt());
+                Console.WriteLine(">");
+                var val = Console.ReadLine();
+                if (val != string.Empty)
+                {
+                    acceptedGlyphs.Add(glyph);
+                    chars.Add(val);
+                }
+            }
+
+            Console.WriteLine("Character Spacing: ");
+            var spacing = int.Parse(Console.ReadLine());
+            var mapping = CombineGlyphsIntoMappingImage(acceptedGlyphs);
+
+            return new GlyphMapping(mapping, chars, spacing);
+        }
+
+        public PixelImage CombineGlyphsIntoMappingImage(IEnumerable<PixelImage> glyphs)
+        {
+            var width = glyphs.Sum(g => g.Width + 1) - 1;
+            var height = glyphs.First().Height;
+            if (!glyphs.Skip(1).All(g => g.Height == height))
+            {
+                throw new Exception("not same height");
+            }
+            var fai = new PixelImage(width, height);
+
+            int x = 0;
+            foreach (var glyph in glyphs)
+            {
+                glyph.Copy(fai, glyph.GetRectangle(), new Point(x, 0));
+                x += glyph.Width + 1;
+            }
+            return fai;
         }
 
         /// <summary>
         /// Internal data structure to keep track of work as the Glyph is being extracted.
         /// </summary>
-        public class GlyphExtraction
+        private class GlyphExtraction
         {
             /// <summary>
             /// The Image the Glyph was found in.

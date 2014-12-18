@@ -9,13 +9,6 @@ namespace win.auto
     // note: statics ... is this smart?
     public class ImageParsing
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="image">Image to parse</param>
-        /// <param name="lookup">The GlyphMapping</param>
-        /// <param name="locations">The locations to parse -- has to exactly match the height of the Glyphs</param>
-        /// <returns></returns>
         public static List<string> Read(PixelImage image, GlyphMapping lookup, List<Rectangle> locations)
         {
             List<string> results = new List<string>();
