@@ -55,6 +55,11 @@ namespace win.auto
             this.Bytes = new byte[this.Stride * this.Height];
         }
 
+        public PixelImage(PixelImage other)
+            : this(other, other.GetRectangle())
+        {
+        }
+
         // note: we force to argb -- the principle being that we probably always want to use argb, though, until we
         // do a write operation we won't force it.
         public PixelImage(PixelImage other, Rectangle subSection)
@@ -177,7 +182,9 @@ namespace win.auto
 
         public PixelImage Subsection(Rectangle r)
         {
-            return new PixelImage(this, r);
+            return new PixelImage(this, r) { 
+                Description = string.Format("{0} from {1}", r, this.Description)
+            };
         }
 
         public override string ToString()
@@ -365,12 +372,19 @@ namespace win.auto
             }
         }
 
+        public PixelImage Mask(Func<Pixel,bool> pixelMatcher)
+        {
+            var img = new PixelImage(this);
+            img.ApplyMask(pixelMatcher);
+            return img;
+        }
+
         // return new?
         /// <summary>
         /// Removes all Pixels that do not match
         /// </summary>
         /// <param name="pixelMatcher"></param>
-        public void Mask(Func<Pixel,bool> pixelMatcher)
+        public void ApplyMask(Func<Pixel,bool> pixelMatcher)
         {
             // todo: turn into map function
             var step = Image.GetPixelFormatSize(this.PixelFormat) / 8;
@@ -386,7 +400,14 @@ namespace win.auto
             }
         }
 
-        public void Replace(Func<Pixel, bool> pixelMatcher, Pixel pixelTo)
+        public PixelImage Replace(Func<Pixel, bool> pixelMatcher, Pixel pixelTo)
+        {
+            var img = new PixelImage(this);
+            img.ApplyReplace(pixelMatcher, pixelTo);
+            return img;
+        }
+
+        public void ApplyReplace(Func<Pixel, bool> pixelMatcher, Pixel pixelTo)
         {
             Map(p => pixelMatcher(p) ? pixelTo : p);
         }
@@ -434,20 +455,32 @@ namespace win.auto
             }
         }
 
-        // note: i don't think this quite works -- stride differences?
+        // Todo: Maybe not what you want -- these means two bitmaps that look the same, but came from different places
+        // are the same?
         public override bool Equals(object obj)
         {
             PixelImage other = obj as PixelImage;
             return obj != null &&
-                (Width == other.Width) &&
-                (Height == other.Height) &&
-                (Stride == other.Stride) &&
-                EqualityHelper.IListEquals(Bytes, other.Bytes);
+                Matches(other);
         }
 
         public override int GetHashCode()
         {
-            return Width * 29 + Height * 29 + Stride;
+            return Width * 29 + Height * 29;
+        }
+
+        public static MatchesEqualityComparer MatchesEqualityCompare; 
+        public class MatchesEqualityComparer : IEqualityComparer<PixelImage>
+        {
+            public bool Equals(PixelImage x, PixelImage y)
+            {
+                return x.Matches(y);
+            }
+
+            public int GetHashCode(PixelImage obj)
+            {
+                return obj.GetHashCode();
+            }
         }
     }
 }
