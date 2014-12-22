@@ -16,10 +16,10 @@ namespace win.auto
         public GlyphMapping ExtractGlyphMapping(
             IEnumerable<PixelImage> images,
             IEnumerable<Rectangle> textAreas,
-            Func<Pixel, bool> glyphPixelMatcher
+            PixelMatcher pixelMatcher
         ) {
-            var glyphExtractions = CreateGlyphExtractions(images, textAreas, glyphPixelMatcher);
-            var unifiedExtractions = UnifyGlyphExtractions(glyphExtractions, glyphPixelMatcher);
+            var glyphExtractions = CreateGlyphExtractions(images, textAreas, pixelMatcher);
+            var unifiedExtractions = UnifyGlyphExtractions(glyphExtractions, pixelMatcher);
             return CreateGlyphMapping(unifiedExtractions);
         }
 
@@ -27,7 +27,7 @@ namespace win.auto
         private List<GlyphExtraction> CreateGlyphExtractions(
             IEnumerable<PixelImage> images,
             IEnumerable<Rectangle> textAreas,
-            Func<Pixel, bool> glyphPixelMatcher
+            PixelMatcher glyphPixelMatcher
         ) {
             var glyphExtractions = new List<GlyphExtraction>();
 
@@ -88,7 +88,7 @@ namespace win.auto
 
         private Dictionary<PixelImage, List<GlyphExtraction>> UnifyGlyphExtractions(
             List<GlyphExtraction> glyphExtractions,
-            Func<Pixel, bool> glyphPixelMatcher
+            PixelMatcher glyphPixelMatcher
         )
         {
             return glyphExtractions

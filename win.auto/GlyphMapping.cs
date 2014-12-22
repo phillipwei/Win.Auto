@@ -17,6 +17,8 @@ namespace win.auto
     {
         public PixelImage ReferenceImage { get; private set; }
 
+        public PixelMatcher PixelMatcher { get; private set; }
+
         /// <summary>
         /// Maps the string to the matching area on the reference image.  Why is this a dictionary?  For conveniene?
         /// </summary>
@@ -97,6 +99,8 @@ namespace win.auto
             {
                 this.ReferenceLookup.Add(glyphList[i], rectangles[i]);
             }
+
+            this.PixelMatcher = new SpecificPixelMatcher(this.ReferencePixel);
         }
 
         public void Save(string dir, string name)

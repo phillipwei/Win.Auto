@@ -52,6 +52,7 @@
     <Compile Include="EqualityHelper.cs" />
     <Compile Include="PixelImage.cs" />
     <Compile Include="Geometry.cs" />
+    <Compile Include="PixelMatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ImageParsing.cs" />
   </ItemGroup>

@@ -22,11 +22,11 @@ namespace win.auto
 
         public static string Read(PixelImage image, GlyphMapping lookup, Rectangle location)
         {
-            return Read(image, lookup, location, p => p.Equals(lookup.ReferencePixel));
+            return Read(image, lookup, location, lookup.PixelMatcher);
         }
         
         public static string Read(PixelImage image, GlyphMapping lookup, Rectangle location, 
-            Func<Pixel,bool> pixelMatcher)
+            PixelMatcher pixelMatcher)
         {
             if (location.X > image.Width ||
                 location.Right > image.Width ||
@@ -56,7 +56,7 @@ namespace win.auto
         }
 
         public static GlyphParseResult ParseNextGlyph(PixelImage image, GlyphMapping lookup, Rectangle rectangle,
-            Func<Pixel, bool> pixelMatcher, int xStart)
+            PixelMatcher pixelMatcher, int xStart)
         {
             foreach (var kvp in lookup.ReferenceLookup.OrderBy(key => -1 * key.Value.Width))
             {
@@ -82,8 +82,8 @@ namespace win.auto
             return new GlyphParseResult(false, string.Empty, -1);
         }
 
-        public static bool CheckGlyphMatch(PixelImage image, GlyphMapping lookup, Rectangle location, 
-            Func<Pixel, bool> pixelMatcher, int xStart, PixelImage glyphImageReference, Rectangle glyphRectangle)
+        public static bool CheckGlyphMatch(PixelImage image, GlyphMapping lookup, Rectangle location,
+            PixelMatcher pixelMatcher, int xStart, PixelImage glyphImageReference, Rectangle glyphRectangle)
         {
             if (xStart + glyphRectangle.Width > location.Right || glyphRectangle.Height > location.Height)
             {
@@ -97,8 +97,8 @@ namespace win.auto
                     Pixel glyphPixel = glyphImageReference.GetPixel(glyphRectangle.Left + x, glyphRectangle.Top + y);
                     Pixel imagePixel = image.GetPixel(location.Left + xStart + x, location.Top + y);
 
-                    if ((glyphPixel.Alpha != 0 && !pixelMatcher(imagePixel)) ||
-                        (glyphPixel.Alpha == 0 && pixelMatcher(imagePixel)))
+                    if ((glyphPixel.Alpha != 0 && !pixelMatcher.IsMatch(imagePixel)) ||
+                        (glyphPixel.Alpha == 0 && pixelMatcher.IsMatch(imagePixel)))
                     {
                         return false;
                     }

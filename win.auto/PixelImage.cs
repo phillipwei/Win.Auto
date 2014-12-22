@@ -196,7 +196,7 @@ namespace win.auto
         //       what abt the fact that it's mostly used for imageparsing?
         // Searches horizontally, scanning up-down, until it finds the search pixel.  Returns the x-position if it
         // was found -- otherwise, returns -1.  
-        public int HorizontalSeek(Func<Pixel, bool> pixelMatcher, Rectangle rectangle, int xOffset)
+        public int HorizontalSeek(PixelMatcher pixelMatcher, Rectangle rectangle, int xOffset)
         {
             if (xOffset >= rectangle.Width)
             {
@@ -209,7 +209,7 @@ namespace win.auto
                 for (y = 0; y < rectangle.Height; y++)
                 {
                     var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
-                    if (pixelMatcher(sample))
+                    if (pixelMatcher.IsMatch(sample))
                     {
                         break;
                     }
@@ -232,7 +232,7 @@ namespace win.auto
         }
 
         // the opposite of the above -- could rename and def refactor...
-        public bool VerticalScan(Func<Pixel, bool> glyphMatcher, Rectangle rectangle, int xOffset, out int yStart, 
+        public bool VerticalScan(PixelMatcher glyphMatcher, Rectangle rectangle, int xOffset, out int yStart, 
             out int yEnd)
         {
             yStart = yEnd = -1;
@@ -245,7 +245,7 @@ namespace win.auto
             for (int y = 0; y < rectangle.Height; y++)
             {
                 var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
-                if (glyphMatcher(sample))
+                if (glyphMatcher.IsMatch(sample))
                 {
                     if(yStart == -1)
                     {
@@ -372,7 +372,7 @@ namespace win.auto
             }
         }
 
-        public PixelImage Mask(Func<Pixel,bool> pixelMatcher)
+        public PixelImage Mask(PixelMatcher pixelMatcher)
         {
             var img = new PixelImage(this);
             img.ApplyMask(pixelMatcher);
@@ -384,7 +384,7 @@ namespace win.auto
         /// Removes all Pixels that do not match
         /// </summary>
         /// <param name="pixelMatcher"></param>
-        public void ApplyMask(Func<Pixel,bool> pixelMatcher)
+        public void ApplyMask(PixelMatcher pixelMatcher)
         {
             // todo: turn into map function
             var step = Image.GetPixelFormatSize(this.PixelFormat) / 8;
@@ -392,7 +392,7 @@ namespace win.auto
             {
                 for (int y = 0; y < Height; ++y)
                 {
-                    if (!pixelMatcher(GetPixel(x, y)))
+                    if (!pixelMatcher.IsMatch(GetPixel(x, y)))
                     {
                         this.SetPixelUnsafe(x, y, step, Pixel.Empty);
                     }
@@ -400,16 +400,16 @@ namespace win.auto
             }
         }
 
-        public PixelImage Replace(Func<Pixel, bool> pixelMatcher, Pixel pixelTo)
+        public PixelImage Replace(PixelMatcher pixelMatcher, Pixel pixelTo)
         {
             var img = new PixelImage(this);
             img.ApplyReplace(pixelMatcher, pixelTo);
             return img;
         }
 
-        public void ApplyReplace(Func<Pixel, bool> pixelMatcher, Pixel pixelTo)
+        public void ApplyReplace(PixelMatcher pixelMatcher, Pixel pixelTo)
         {
-            Map(p => pixelMatcher(p) ? pixelTo : p);
+            Map(p => pixelMatcher.IsMatch(p) ? pixelTo : p);
         }
 
         private void Map(Func<Pixel,Pixel> mapping)
