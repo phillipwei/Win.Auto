@@ -29,7 +29,9 @@ namespace win.auto
         /// </summary>
         public Pixel ReferencePixel { get; private set; }
 
-        // todo: doesn't belong here
+        /// <summary>
+        /// The pixel width beyond which is considered a whitespace (inclusive)
+        /// </summary>
         public int WhiteSpaceWidth { get; private set; }
 
         public GlyphMapping(string imagePath, IList<string> glyphList, int whiteSpaceWidth)

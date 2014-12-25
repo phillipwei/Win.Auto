@@ -143,7 +143,7 @@ namespace win.auto
 
             Console.WriteLine(string.Join(",", chars.OrderBy(c => c)));
             Console.WriteLine("Max Spacing={0}", geMaxSpacing.SpacingFromPrevious);
-            Console.WriteLine("Enter Character Spacing: ");
+            Console.WriteLine("Enter Character Spacing (pixel width >= that counts as space): ");
             var spacing = int.Parse(Console.ReadLine());
             var mapping = CombineGlyphsIntoMappingImage(acceptedGlyphs);
 
