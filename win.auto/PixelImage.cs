@@ -21,12 +21,22 @@ namespace win.auto
         public byte[] Bytes;
 
         public PixelImage(string imagePath)
-            : this(new Bitmap(imagePath))
         {
+            if(!File.Exists(imagePath))
+            {
+                throw new FileNotFoundException(imagePath);
+            }
+
+            CreateFromBitmap(new Bitmap(imagePath));
             this.Description = imagePath;
         }
 
         public PixelImage(Bitmap bmp)
+        {
+            CreateFromBitmap(bmp);
+        }
+
+        private void CreateFromBitmap(Bitmap bmp)
         {
             this.PixelFormat = bmp.PixelFormat;
             this.PixelPalette = bmp.Palette.Entries.ToList().ConvertAll(color => new Pixel(color));
