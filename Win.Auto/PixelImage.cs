@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace win.auto
@@ -22,7 +22,7 @@ namespace win.auto
 
         public PixelImage(string imagePath)
         {
-            if(!File.Exists(imagePath))
+            if (!File.Exists(imagePath))
             {
                 throw new FileNotFoundException(imagePath);
             }
@@ -51,7 +51,7 @@ namespace win.auto
 
             this.Stride = bmpData.Stride;
             this.Bytes = new byte[bmpData.Stride * bmp.Height];
-            System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, this.Bytes, 0, this.Bytes.Length);
+            Marshal.Copy(bmpData.Scan0, this.Bytes, 0, this.Bytes.Length);
 
             bmp.UnlockBits(bmpData);
         }
@@ -128,7 +128,7 @@ namespace win.auto
             if (x < 0 || y < 0 || x > Width || y > Height)
             {
                 throw new ArgumentException(String.Format(
-                    "GetPixel({0},{1}) on an image of size [{2},{3}]", 
+                    "GetPixel({0},{1}) on an image of size [{2},{3}]",
                     x, y, Width, Height
                 ));
             }
@@ -192,7 +192,8 @@ namespace win.auto
 
         public PixelImage Subsection(Rectangle r)
         {
-            return new PixelImage(this, r) { 
+            return new PixelImage(this, r)
+            {
                 Description = string.Format("{0} from {1}", r, this.Description)
             };
         }
@@ -201,7 +202,7 @@ namespace win.auto
         {
             return Description;
         }
-        
+
         // todo: does it make sense for this to be on the image itself - or does it go onto an algo/vision class?
         //       what abt the fact that it's mostly used for imageparsing?
         // Searches horizontally, scanning up-down, until it finds the search pixel.  Returns the x-position if it
@@ -242,7 +243,7 @@ namespace win.auto
         }
 
         // the opposite of the above -- could rename and def refactor...
-        public bool VerticalScan(PixelMatcher glyphMatcher, Rectangle rectangle, int xOffset, out int yStart, 
+        public bool VerticalScan(PixelMatcher glyphMatcher, Rectangle rectangle, int xOffset, out int yStart,
             out int yEnd)
         {
             yStart = yEnd = -1;
@@ -257,7 +258,7 @@ namespace win.auto
                 var sample = GetPixel(rectangle.Left + xOffset, rectangle.Top + y);
                 if (glyphMatcher.IsMatch(sample))
                 {
-                    if(yStart == -1)
+                    if (yStart == -1)
                     {
                         yStart = y;
                     }
@@ -268,9 +269,14 @@ namespace win.auto
             return yStart != -1;
         }
 
+        /// <summary>
+        /// Checks if both PixelImages are identical in Pixels.
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
         public bool Matches(PixelImage other)
         {
-            if( other == null ||
+            if (other == null ||
                 (this.Width != other.Width) ||
                 (this.Height != other.Height))
             {
@@ -291,6 +297,24 @@ namespace win.auto
             return true;
         }
 
+        /// <summary>
+        /// Checks if the rectangle subsection of this PixelImage matches within the other.
+        /// </summary>
+        /// <param name="other"></param>
+        /// <param name="rectangle"></param>
+        /// <returns></returns>
+        public bool Matches(PixelImage other, Rectangle rectangle)
+        {
+            return this.Matches(other, rectangle, Point.Empty);
+        }
+
+        /// <summary>
+        /// Checks if the rectangle subsection of this PixelImage matches within the other at the given offset.
+        /// </summary>
+        /// <param name="other"></param>
+        /// <param name="rectangle"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
         public bool Matches(PixelImage other, Rectangle rectangle, Point offset)
         {
             for (int x = 0; x < rectangle.Width; x++)
@@ -333,7 +357,7 @@ namespace win.auto
                 }
             }
 
-            System.Runtime.InteropServices.Marshal.Copy(bmpBytes, 0, bmpPtr, bmpBytes.Length);
+            Marshal.Copy(bmpBytes, 0, bmpPtr, bmpBytes.Length);
             bmp.UnlockBits(bmpData);
             return bmp;
         }
@@ -422,7 +446,7 @@ namespace win.auto
             Map(p => pixelMatcher.IsMatch(p) ? pixelTo : p);
         }
 
-        private void Map(Func<Pixel,Pixel> mapping)
+        private void Map(Func<Pixel, Pixel> mapping)
         {
             var step = this.Step;
             for (int x = 0; x < Width; ++x)
@@ -438,9 +462,9 @@ namespace win.auto
         {
             var sb = new StringBuilder();
             var step = this.Step;
-            for(int y=0; y<this.Height; y++)
+            for (int y = 0; y < this.Height; y++)
             {
-                for(int x=0; x<this.Width; x++)
+                for (int x = 0; x < this.Width; x++)
                 {
                     sb.Append(this.GetPixelUnsafe(x, y, step).Alpha == 0 ? "-" : "#");
                 }
@@ -479,7 +503,7 @@ namespace win.auto
             return Width * 29 + Height * 29;
         }
 
-        public static MatchesEqualityComparer MatchesEqualityCompare; 
+        public static MatchesEqualityComparer MatchesEqualityCompare;
         public class MatchesEqualityComparer : IEqualityComparer<PixelImage>
         {
             public bool Equals(PixelImage x, PixelImage y)
