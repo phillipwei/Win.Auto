@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace win.auto
+namespace Win.Auto
 {
     public static class EqualityHelper
     {

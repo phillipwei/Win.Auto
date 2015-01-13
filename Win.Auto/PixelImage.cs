@@ -7,7 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace win.auto
+namespace Win.Auto
 {
     // bit locking, helper images - pixels
     public class PixelImage

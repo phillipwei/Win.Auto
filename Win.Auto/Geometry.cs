@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace win.auto
+namespace Win.Auto
 {
     public static class Geometry
     {

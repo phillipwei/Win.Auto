@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using win.auto;
-
-namespace win.auto.test
+namespace Win.Auto.Test
 {
     [TestClass]
     public class ImageParserTest

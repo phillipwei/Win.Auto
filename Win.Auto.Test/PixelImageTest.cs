@@ -1,31 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.IO;
 using System.Drawing;
+using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using win.auto;
 
-namespace win.auto.test
+namespace Win.Auto.Test
 {
     [TestClass]
     public class PixelImageTest
     {
-        List<PixelImage> rgbList;
-        PixelImage font, helloWorld;
+        List<PixelImage> _rgbList;
+        PixelImage _font, _helloWorld;
 
         [TestInitialize]
         public void Initialize()
         {
             var dataPath = @"Data";
             var rgbFileNames = new List<String>() {"rgb.bmp", "rgb.gif", "rgb32.png", "rgb24.png", "rgb8.png"};
-            this.rgbList = rgbFileNames.ConvertAll(s => new PixelImage(Path.Combine(dataPath, s)));
-            this.font = new PixelImage(Path.Combine(dataPath, "04b03.png"));
-            this.helloWorld = new PixelImage(Path.Combine(dataPath, "helloworld.png"));
+            this._rgbList = rgbFileNames.ConvertAll(s => new PixelImage(Path.Combine(dataPath, s)));
+            this._font = new PixelImage(Path.Combine(dataPath, "04b03.png"));
+            this._helloWorld = new PixelImage(Path.Combine(dataPath, "helloworld.png"));
         }
 
         [TestMethod]
-        public void Image_GetPixel_Test()
+        public void PixelImage_GetPixel_Test()
         {
             Dictionary<Point, Pixel> expectedColorsByCoord = new Dictionary<Point, Pixel>()
             {
@@ -42,7 +41,7 @@ namespace win.auto.test
             };
 
             // Standard Color Check
-            foreach(var image in rgbList)
+            foreach(var image in _rgbList)
             {
                 foreach(var pointAndColor in expectedColorsByCoord)
                 {
@@ -66,7 +65,7 @@ namespace win.auto.test
                 { "rgb8.png",  new Pixel(0,0,0,0) },
             };
 
-            foreach(var image in rgbList)
+            foreach(var image in _rgbList)
             {
                 var point = new Point(2, 2);
                 var expected = expectedColorByName[image.Description.Split('\\').Last()];
@@ -80,24 +79,24 @@ namespace win.auto.test
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentException))]
-        public void Image_GetPixel_OutOfRange_Test()
+        public void PixelImage_GetPixel_OutOfRange_Test()
         {
-            rgbList.First().GetPixel(-1, -1);
+            _rgbList.First().GetPixel(-1, -1);
         }
 
         [TestMethod]
-        public void Image_Subsection_Test()
+        public void PixelImage_Subsection_Test()
         {
-            var sub = rgbList.First().Subsection(new Rectangle(1, 1, 1, 1));
+            var sub = _rgbList.First().Subsection(new Rectangle(1, 1, 1, 1));
             Assert.AreEqual(1, sub.Width);
             Assert.AreEqual(1, sub.Height);
             Assert.AreEqual(new Pixel(255, 0, 255), sub.GetPixel(0, 0));
         }
 
-        [TestMethod]       
-        public void Image_GetBitMap_Test()
+        [TestMethod]
+        public void PixelImage_GetBitMap_Test()
         {
-            foreach(var rgb in rgbList)
+            foreach(var rgb in _rgbList)
             {
                 new PixelImage(rgb.GetBitmap());
             }

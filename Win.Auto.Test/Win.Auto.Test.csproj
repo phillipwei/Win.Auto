@@ -55,7 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FastAccessImageTest.cs" />
+    <Compile Include="PixelImageTest.cs" />
     <Compile Include="ImageParserTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

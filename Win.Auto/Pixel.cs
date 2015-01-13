@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Drawing;
 
-namespace win.auto
+namespace Win.Auto
 {
     public struct Pixel
     {

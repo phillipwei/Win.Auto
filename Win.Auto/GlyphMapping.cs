@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace win.auto
+namespace Win.Auto
 {
     /// <summary>
     /// Data Structure that provides a mapping from Glyphs to Characters.  Used by ImageParsing to extract Character

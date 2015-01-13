@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 
-namespace win.auto
+namespace Win.Auto
 {
     // note: statics ... is this smart?
     public class ImageParsing

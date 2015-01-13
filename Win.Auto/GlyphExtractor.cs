@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using win.auto;
+using Win.Auto;
 using System.Linq;
 using System.Text;
 
-namespace win.auto
+namespace Win.Auto
 {
     /// <summary>
     /// Extracts Glyphs from a sequence of PixelImages, prompts for what Characters those Glyphs correspond to, and
